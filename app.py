@@ -8,9 +8,11 @@ import openai
 st.set_page_config(page_title="Formula 1 Analysis", layout="wide")
 
 # Set your OpenAI API key via Streamlit secrets
-openai.api_key = st.secrets["openai_api_key"]
+openai.api_key = st.secrets.get("openai_api_key", "")  # Use get to prevent crash if not set
 
 def ask_gpt(prompt):
+    if not openai.api_key:
+        return "❌ Error: OpenAI API key not found. Please configure it in Streamlit secrets."
     try:
         response = openai.chat.completions.create(
             model="gpt-3.5-turbo",
@@ -47,16 +49,8 @@ lap_data["positionOrder"] = lap_data["positionOrder"].astype(int)
 top_drivers = results["driverId"].value_counts().head(6).index
 top_driver_data = results[results["driverId"].isin(top_drivers)]
 
-# Graph-specific tabs
-tabs = st.tabs([
-    "🏁 Overview",
-    "Q1 Lap Time Distribution",
-    "Grid Start vs Final Position",
-    "Position Change by Grid Group",
-    "Final Position vs Points",
-    "Fastest Lap Rank vs Final Position",
-    "Top Driver Performance"
-])
+# Overview and interactive graph selector
+tabs = st.tabs(["🏁 Overview", "📊 Visualizations"])
 
 with tabs[0]:
     st.title("Formula 1 Performance Analysis")
@@ -74,73 +68,65 @@ with tabs[0]:
     col3.metric("Fastest Q1 Time (s)", round(q1_cleaned["q1_seconds"].min(), 2))
 
 with tabs[1]:
-    st.header("Q1 Lap Time Distribution")
-    fig, ax = plt.subplots(figsize=(10, 4))
-    sns.histplot(data=q1_cleaned, x="q1_seconds", bins=30, kde=True, color="purple", ax=ax)
-    ax.set_title("Distribution of Q1 Lap Times (in seconds)")
-    ax.set_xlabel("Q1 Time (seconds)")
-    ax.set_ylabel("Number of Drivers")
-    st.pyplot(fig)
-    st.markdown("""**Insight:** Most drivers set lap times between 78–100 seconds. A slight right skew indicates some outliers with slower times.""")
-    user_question = st.text_input("Ask ChatGPT about this graph:", key="q1_chat")
-    if st.button("Ask GPT", key="btn_q1") and user_question:
-        st.write(ask_gpt(user_question))
+    st.subheader("Choose a graph to view:")
+    graph_choice = st.radio("Select a graph:", [
+        "Q1 Lap Time Distribution",
+        "Grid Start vs Final Position",
+        "Position Change by Grid Group",
+        "Final Position vs Points",
+        "Fastest Lap Rank vs Final Position",
+        "Top Driver Performance"
+    ])
 
-with tabs[2]:
-    st.header("Grid Start vs Final Position")
-    fig, ax = plt.subplots(figsize=(14, 6))
-    sns.boxplot(data=filtered_results, x="grid", y="positionOrder", palette="pastel", ax=ax)
-    ax.set_yticks(np.arange(1, 21, 1))
-    ax.set_title("Final Race Positions by Starting Grid Position (1–20 Only)")
-    st.pyplot(fig)
-    st.markdown("""**Insight:** Front-grid starters tend to finish better with tighter distribution; back-grid drivers are more variable.""")
-    user_question = st.text_input("Ask ChatGPT about this graph:", key="grid_chat")
-    if st.button("Ask GPT", key="btn_grid") and user_question:
-        st.write(ask_gpt(user_question))
+    if graph_choice == "Q1 Lap Time Distribution":
+        fig, ax = plt.subplots(figsize=(10, 4))
+        sns.histplot(data=q1_cleaned, x="q1_seconds", bins=30, kde=True, color="purple", ax=ax)
+        ax.set_title("Distribution of Q1 Lap Times (in seconds)")
+        ax.set_xlabel("Q1 Time (seconds)")
+        ax.set_ylabel("Number of Drivers")
+        st.pyplot(fig)
+        st.markdown("**Insight:** Most drivers set lap times between 78–100 seconds. A slight right skew indicates some outliers with slower times.")
 
-with tabs[3]:
-    st.header("Position Change by Grid Group")
-    fig, ax = plt.subplots(figsize=(10, 5))
-    sns.histplot(data=results, x="position_change", hue="grid_group", bins=30, kde=True, multiple="stack", palette=["green", "gray"], ax=ax)
-    ax.axvline(0, color='red', linestyle='--')
-    ax.set_title("Position Change Distribution by Grid Group")
-    st.pyplot(fig)
-    st.markdown("""**Insight:** Top 5 starters usually maintain/improve position. Grid 6–20 drivers show more varied outcomes.""")
-    user_question = st.text_input("Ask ChatGPT about this graph:", key="change_chat")
-    if st.button("Ask GPT", key="btn_change") and user_question:
-        st.write(ask_gpt(user_question))
+    elif graph_choice == "Grid Start vs Final Position":
+        fig, ax = plt.subplots(figsize=(14, 6))
+        sns.boxplot(data=filtered_results, x="grid", y="positionOrder", palette="pastel", ax=ax)
+        ax.set_yticks(np.arange(1, 21, 1))
+        ax.set_title("Final Race Positions by Starting Grid Position (1–20 Only)")
+        st.pyplot(fig)
+        st.markdown("**Insight:** Front-grid starters tend to finish better with tighter distribution; back-grid drivers are more variable.")
 
-with tabs[4]:
-    st.header("Final Position vs Points Earned")
-    top20 = results[results["positionOrder"] <= 20]
-    fig, ax = plt.subplots(figsize=(10, 5))
-    sns.boxplot(data=top20, x="positionOrder", y="points", palette="Blues", ax=ax)
-    ax.set_title("Points Distribution by Final Race Position")
-    st.pyplot(fig)
-    st.markdown("""**Insight:** Points drop off sharply after position 10, confirming F1’s reward structure for top finishers.""")
-    user_question = st.text_input("Ask ChatGPT about this graph:", key="points_chat")
-    if st.button("Ask GPT", key="btn_points") and user_question:
-        st.write(ask_gpt(user_question))
+    elif graph_choice == "Position Change by Grid Group":
+        fig, ax = plt.subplots(figsize=(10, 5))
+        sns.histplot(data=results, x="position_change", hue="grid_group", bins=30, kde=True, multiple="stack", palette=["green", "gray"], ax=ax)
+        ax.axvline(0, color='red', linestyle='--')
+        ax.set_title("Position Change Distribution by Grid Group")
+        st.pyplot(fig)
+        st.markdown("**Insight:** Top 5 starters usually maintain/improve position. Grid 6–20 drivers show more varied outcomes.")
 
-with tabs[5]:
-    st.header("Fastest Lap Rank vs Final Position")
-    fig, ax = plt.subplots(figsize=(10, 5))
-    sns.scatterplot(data=lap_data, x="rank", y="positionOrder", alpha=0.6, color="purple", ax=ax)
-    ax.set_title("Final Race Position vs. Fastest Lap Rank")
-    st.pyplot(fig)
-    st.markdown("""**Insight:** Setting the fastest lap doesn’t guarantee a top finish – speed alone isn’t enough.""")
-    user_question = st.text_input("Ask ChatGPT about this graph:", key="lap_chat")
-    if st.button("Ask GPT", key="btn_lap") and user_question:
-        st.write(ask_gpt(user_question))
+    elif graph_choice == "Final Position vs Points":
+        top20 = results[results["positionOrder"] <= 20]
+        fig, ax = plt.subplots(figsize=(10, 5))
+        sns.boxplot(data=top20, x="positionOrder", y="points", palette="Blues", ax=ax)
+        ax.set_title("Points Distribution by Final Race Position")
+        st.pyplot(fig)
+        st.markdown("**Insight:** Points drop off sharply after position 10, confirming F1’s reward structure for top finishers.")
 
-with tabs[6]:
-    st.header("Top Driver Performance")
-    fig, ax = plt.subplots(figsize=(10, 6))
-    sns.pointplot(data=top_driver_data, x="driverId", y="positionOrder", join=False, capsize=0.2, errwidth=1.5, color="navy", ax=ax)
-    ax.invert_yaxis()
-    ax.set_title("Average Final Race Position of Top 6 Most Active Drivers")
-    st.pyplot(fig)
-    st.markdown("""**Insight:** Some drivers are consistently better – confidence intervals help show reliability over time.""")
-    user_question = st.text_input("Ask ChatGPT about this graph:", key="driver_chat")
-    if st.button("Ask GPT", key="btn_driver") and user_question:
-        st.write(ask_gpt(user_question))
+    elif graph_choice == "Fastest Lap Rank vs Final Position":
+        fig, ax = plt.subplots(figsize=(10, 5))
+        sns.scatterplot(data=lap_data, x="rank", y="positionOrder", alpha=0.6, color="purple", ax=ax)
+        ax.set_title("Final Race Position vs. Fastest Lap Rank")
+        st.pyplot(fig)
+        st.markdown("**Insight:** Setting the fastest lap doesn’t guarantee a top finish – speed alone isn’t enough.")
+
+    elif graph_choice == "Top Driver Performance":
+        fig, ax = plt.subplots(figsize=(10, 6))
+        sns.pointplot(data=top_driver_data, x="driverId", y="positionOrder", join=False, capsize=0.2, errwidth=1.5, color="navy", ax=ax)
+        ax.invert_yaxis()
+        ax.set_title("Average Final Race Position of Top 6 Most Active Drivers")
+        st.pyplot(fig)
+        st.markdown("**Insight:** Some drivers are consistently better – confidence intervals help show reliability over time.")
+
+    # ChatGPT interaction box
+    user_question = st.text_input("Ask ChatGPT about this graph:")
+    if st.button("Ask GPT") and user_question:
+        st.markdown(ask_gpt(user_question))
