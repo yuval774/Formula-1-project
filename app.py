@@ -74,16 +74,19 @@ if "fact_i" not in st.session_state:
 def draw_graph(name: str, df_results: pd.DataFrame):
     if name == "Q1 Lap Time Distribution":
         fig, ax = plt.subplots(figsize=(9, 3.8))
-        sns.histplot(q1_cleaned, x="q1_seconds", bins=30, kde=True,
-                     color="mediumorchid", ax=ax)
-        ax.set(title="Distribution of Q1 Lap Times", xlabel="Q1 Time (s)", ylabel="Drivers")
+        sns.histplot(q1_cleaned, x="q1_seconds", bins=30,
+                     kde=True, color="mediumorchid", ax=ax)
+        ax.set(title="Distribution of Q1 Lap Times",
+               xlabel="Q1 Time (s)", ylabel="Drivers")
         return fig, "Most drivers lap 78-100 s; right-skew shows slower outliers."
 
     if name == "Grid Start vs Final Position":
         filtered = df_results[df_results["grid"].between(1, 20)]
         fig, ax = plt.subplots(figsize=(10, 4))
-        sns.boxplot(filtered, x="grid", y="positionOrder", palette="pastel", ax=ax)
-        ax.set(title="Finishing Position by Starting Grid", ylabel="Finish Position")
+        sns.boxplot(filtered, x="grid", y="positionOrder",
+                    palette="pastel", ax=ax)
+        ax.set(title="Finishing Position by Starting Grid",
+               ylabel="Finish Position")
         ax.set_yticks(np.arange(1, 21, 1))
         return fig, "Front-row starters finish higher; back-markers vary widely."
 
@@ -99,8 +102,10 @@ def draw_graph(name: str, df_results: pd.DataFrame):
     if name == "Final Position vs Points":
         top20 = df_results[df_results["positionOrder"] <= 20]
         fig, ax = plt.subplots(figsize=(9, 3.8))
-        sns.boxplot(top20, x="positionOrder", y="points", palette="Blues", ax=ax)
-        ax.set(title="Points by Finish Position", xlabel="Position", ylabel="Points")
+        sns.boxplot(top20, x="positionOrder", y="points",
+                    palette="Blues", ax=ax)
+        ax.set(title="Points by Finish Position",
+               xlabel="Position", ylabel="Points")
         return fig, "Points drop sharply after P10 – F1’s scoring rule."
 
     if name == "Fastest Lap Rank vs Final Position":
@@ -111,21 +116,15 @@ def draw_graph(name: str, df_results: pd.DataFrame):
                xlabel="Fastest Lap Rank", ylabel="Finish Pos.")
         return fig, "Fastest lap alone doesn’t secure a podium – strategy matters."
 
-    if name == "Top Driver Performance":
-        fig, ax = plt.subplots(figsize=(9, 4))
-        sns.pointplot(_top_driver_data, x="driverId", y="positionOrder",
-                      join=False, capsize=0.2, errwidth=1.5, color="navy", ax=ax)
-        ax.invert_yaxis()
-        ax.set(title="Avg Finish – Top 6 Most Active Drivers", ylabel="Avg Finish Pos.")
-        return fig, "Confidence intervals reveal driver consistency variations."
-
-    # Correlation heat-map
-    corr_df = df_results[["grid", "positionOrder", "points", "laps"]].corr()
-    fig, ax = plt.subplots(figsize=(5, 4))
-    sns.heatmap(corr_df, annot=True, cmap="coolwarm", ax=ax)
-    ax.set(title="Correlation Matrix – Key Metrics")
-    return fig, "Shows relationships between quantitative variables."
-
+    # Top Driver Performance
+    fig, ax = plt.subplots(figsize=(9, 4))
+    sns.pointplot(_top_driver_data, x="driverId", y="positionOrder",
+                  join=False, capsize=0.2, errwidth=1.5,
+                  color="navy", ax=ax)
+    ax.invert_yaxis()
+    ax.set(title="Avg Finish – Top 6 Most Active Drivers",
+           ylabel="Avg Finish Pos.")
+    return fig, "Confidence intervals reveal driver consistency variations."
 
 GRAPH_NAMES = [
     "Q1 Lap Time Distribution",
@@ -134,7 +133,6 @@ GRAPH_NAMES = [
     "Final Position vs Points",
     "Fastest Lap Rank vs Final Position",
     "Top Driver Performance",
-    "Correlation Heat-map (numeric)",
 ]
 
 # ─────────────────────────────────────────────────────────────
@@ -162,12 +160,12 @@ with overview_tab:
 
     st.markdown("#### 📺 Recommended video for beginners")
     st.markdown(
-        "[Watch the official F1 beginner’s guide on YouTube]"
-        "(https://www.youtube.com/watch?v=Q-jjZMMxbZs)"
+        "[Watch the official F1 beginner’s guide on YouTube](https://www.youtube.com/watch?v=Q-jjZMMxbZs)"
     )
     st.markdown(
-        "_This is the **official Formula 1 YouTube channel**’s beginner guide. "
-        "It explains the sport’s basics in under 10 minutes — highly recommended if you’re new to F1!_"
+        "_This is the **official Formula&nbsp;1 YouTube channel**’s beginner guide. "
+        "It explains the sport’s basics in under 10&nbsp;minutes — highly recommended if you’re new to F1!_",
+        unsafe_allow_html=True
     )
 
 # --------------------------- GRAPH EXPLORER ----------------------------------
