@@ -80,8 +80,8 @@ def draw_graph(name: str, df_results: pd.DataFrame):
     """Return (figure, insight-string) for a given graph label."""
     if name == "Q1 Lap Time Distribution":
         fig, ax = plt.subplots(figsize=(9, 3.8))
-        sns.histplot(q1_cleaned, x="q1_seconds",
-                     bins=30, kde=True, color="mediumorchid", ax=ax)
+        sns.histplot(q1_cleaned, x="q1_seconds", bins=30,
+                     kde=True, color="mediumorchid", ax=ax)
         ax.set(title="Distribution of Q1 Lap Times",
                xlabel="Q1 Time (s)", ylabel="Drivers")
         return fig, "Most drivers lap 78-100 s; right-skew shows slower outliers."
@@ -98,9 +98,8 @@ def draw_graph(name: str, df_results: pd.DataFrame):
 
     if name == "Position Change by Grid Group":
         fig, ax = plt.subplots(figsize=(9, 3.8))
-        sns.histplot(df_results, x="position_change",
-                     hue="grid_group", bins=30, kde=True,
-                     multiple="stack",
+        sns.histplot(df_results, x="position_change", hue="grid_group",
+                     bins=30, kde=True, multiple="stack",
                      palette=["seagreen", "slategray"], ax=ax)
         ax.axvline(0, color="red", ls="--")
         ax.set(title="Position Change (Grid − Finish)")
@@ -126,8 +125,8 @@ def draw_graph(name: str, df_results: pd.DataFrame):
     if name == "Top Driver Performance":
         fig, ax = plt.subplots(figsize=(9, 4))
         sns.pointplot(_top_driver_data, x="driverId", y="positionOrder",
-                      join=False, capsize=0.2,
-                      errwidth=1.5, color="navy", ax=ax)
+                      join=False, capsize=0.2, errwidth=1.5,
+                      color="navy", ax=ax)
         ax.invert_yaxis()
         ax.set(title="Avg Finish – Top 6 Most Active Drivers",
                ylabel="Avg Finish Pos.")
@@ -161,17 +160,29 @@ overview_tab, explorer_tab, compare_tab, about_tab = st.tabs(
 with overview_tab:
     st.markdown("## 🏆 Formula 1 Performance Analysis")
     st.markdown("### _It’s lights out and away we gooo!_ 🚦")
-    st.markdown("**Submitted by:** Yuval Vin  |  **Track:** Business Administration + Digital Innovation")
+    st.markdown(
+        "**Submitted by:** Yuval Vin  |  **Track:** Business Administration + Digital Innovation")
 
+    # Key metrics
     c1, c2, c3 = st.columns(3)
     c1.metric("👥 Drivers", results["driverId"].nunique())
     c2.metric("🗓️ Races", results["raceId"].nunique())
-    c3.metric("⚡ Fastest Q1 (s)", f"{q1_cleaned['q1_seconds'].min():.3f}")
+    c3.metric("⚡ Fastest Q1 (s)",
+              f"{q1_cleaned['q1_seconds'].min():.3f}")
 
+    # Rotating fact button
     if st.button("💡 Enlighten me with an F1 fact"):
         idx = st.session_state.fact_i
         st.info(FACT_BANK[idx])
         st.session_state.fact_i = (idx + 1) % len(FACT_BANK)
+
+    st.markdown("#### 📺 Recommended video for beginners")
+    st.video("https://www.youtube.com/watch?v=Q-jjZMMxbZs")
+    st.markdown(
+        "_This is the **official Formula 1 YouTube channel**’s beginner guide. "
+        "It explains the sport’s basics in under 10 minutes — highly recommended "
+        "if you’re new to F1!_"
+    )
 
 # --------------------------- GRAPH EXPLORER ----------------------------------
 with explorer_tab:
@@ -222,7 +233,7 @@ with about_tab:
 
 **Tabs overview**
 
-* **🏎️ Overview** – project intro, key metrics, and a rotating fun-fact button  
+* **🏎️ Overview** – project intro, key metrics, beginner-friendly F1 video and a rotating fun-fact button  
 * **📊 Graph Explorer** – large buttons to view individual insights  
 * **🔀 Compare Graphs** – select any two visuals side-by-side for quick comparison  
 * **🛈 About** – you are here!
