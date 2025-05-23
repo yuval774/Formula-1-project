@@ -1,6 +1,6 @@
 streamlit
 pandas
-seaborn
-matplotlib
 numpy
-openai
+matplotlib
+seaborn
+openai>=1.1.0
