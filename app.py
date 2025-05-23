@@ -20,8 +20,15 @@ client: OpenAI | None = OpenAI(api_key=api_key) if api_key else None
 # ────────────────────────────────────────────────────────────────────────────────
 
 def ask_gpt(prompt: str) -> str:
+    """Return ChatGPT answer or a clear, ASCII‑only error string."""
     if client is None:
-        return "❌ **No OpenAI API key configured.**\nGo to *Manage app → Settings → Secrets* and add `openai_api_key = "sk‑..."`."
+        return (
+            "❌ No OpenAI API key configured.
+"
+            "Add it in *Manage app > Settings > Secrets* as:
+"
+            "`openai_api_key = \"sk-...\"`"
+        )
     try:
         res = client.chat.completions.create(
             model="gpt-3.5-turbo",
@@ -29,6 +36,11 @@ def ask_gpt(prompt: str) -> str:
         )
         return res.choices[0].message.content
     except openai_error.RateLimitError:
+        return "❌ Quota exhausted or rate‑limited. Check your OpenAI account usage."
+    except Exception as e:
+        return f"❌ Error: {e}"
+
+# ─────────────────────────────────────────.RateLimitError:
         return "❌ **Quota exhausted.** Your OpenAI account has no remaining credit or requests/min limit was reached."
     except Exception as e:
         return f"❌ Error: {e}"
