@@ -29,6 +29,17 @@ def load_data():
 
 results, qualifying = load_data()
 
+# Fixing lap time conversion with safe parsing
+def lap_time_to_seconds_safe(x):
+    try:
+        parts = x.split(":")
+        return float(parts[0])*60 + float(parts[1])
+    except:
+        return np.nan
+
+qualifying["q1_seconds"] = qualifying["q1"].dropna().apply(lap_time_to_seconds_safe)
+q1_cleaned = qualifying[qualifying["q1_seconds"].notna()]
+
 # Tabs
 overview_tab, graphs_tab = st.tabs(["🏁 Project Overview", "📊 Data Visualizations"])
 
@@ -55,18 +66,17 @@ with overview_tab:
     st.markdown("---")
     st.subheader("📊 Summary Dashboard")
 
-    # Fixing lap time conversion with safe parsing
-    def lap_time_to_seconds_safe(x):
-        try:
-            parts = x.split(":")
-            return float(parts[0])*60 + float(parts[1])
-        except:
-            return np.nan
-
-    qualifying["q1_seconds"] = qualifying["q1"].dropna().apply(lap_time_to_seconds_safe)
-    q1_cleaned = qualifying[qualifying["q1_seconds"].notna()]
-
     col1, col2, col3 = st.columns(3)
     col1.metric("Total Drivers", len(results["driverId"].unique()))
     col2.metric("Total Races", len(results["raceId"].unique()))
     col3.metric("Fastest Q1 Time (s)", round(q1_cleaned["q1_seconds"].min(), 2))
+
+# --- Tab 2: Graphs ---
+with graphs_tab:
+    st.subheader("Q1 Lap Time Distribution")
+    fig, ax = plt.subplots(figsize=(10, 4))
+    sns.histplot(q1_cleaned["q1_seconds"], bins=30, kde=True, ax=ax, color="purple")
+    ax.set_xlabel("Q1 Time (seconds)")
+    ax.set_ylabel("Number of Drivers")
+    st.pyplot(fig)
+    st.markdown("Most drivers clock lap times between 78–100 seconds. The slight right skew indicates a few slower performances.")
