@@ -50,19 +50,20 @@ _top_driver_data = results[results["driverId"].isin(top_drivers)]
 # =============================================================================
 # SIDE BAR – IMAGE + QUICK FACTS
 # =============================================================================
-SIDEBAR_IMAGE_URL = "https://raw.githubusercontent.com/formula1/logos/main/f1_logo_red.png"
-st.sidebar.image(SIDEBAR_IMAGE_URL, use_column_width=True)
+# =============================================================================
+# SIDE BAR – QUICK FACTS (image removed)
+# =============================================================================
 
-st.sidebar.markdown("### 🧠 Did You Know?")
+st.sidebar.markdown("### 🧠 Did You Know?")
 for fact in [
     "🏁 Pole position boosts win odds by ~40%",
     "💨 Fastest lap doesn’t guarantee a podium",
-    "🔁 One‑third of overtakes happen in the first 3 laps",
+    "🔁 One-third of overtakes happen in the first 3 laps",
     "🏙️ Monaco is the slowest but hardest GP to win",
 ]:
     st.sidebar.markdown(fact)
 
-# Extra fact bank for button
+# Extra fact bank for "Enlighten me" button
 FACT_BANK = [
     "🔧 Pit‑crews change 4 tyres in under 2 seconds!",
     "🐝 An F1 car can drive upside‑down at 175 km/h thanks to down‑force.",
