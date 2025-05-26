@@ -8,7 +8,8 @@ import random
 # ─────────────────────────────────────────────────────────────
 #  PAGE CONFIG
 # ─────────────────────────────────────────────────────────────
-st.set_page_config(page_title="Formula 1 Analysis Dashboard", layout="wide")
+st.set_page_config(page_title="Formula 1 Analysis Dashboard",
+                   layout="wide")
 
 # ─────────────────────────────────────────────────────────────
 #  DATA LOAD + PREP
@@ -47,29 +48,42 @@ top_drivers = results["driverId"].value_counts().head(6).index
 _top_driver_data = results[results["driverId"].isin(top_drivers)]
 
 # ─────────────────────────────────────────────────────────────
-#  SIDEBAR FACTS
+#  SIDEBAR QUICK FACTS
 # ─────────────────────────────────────────────────────────────
 st.sidebar.markdown("### 🧠 Did You Know?")
 for quick_fact in [
-    "🏁 Pole position boosts win odds by ~40%",
+    "🏁 Pole position boosts win odds by ~40 %",
     "💨 Fastest lap doesn’t guarantee a podium",
     "🔁 One-third of overtakes happen in the first 3 laps",
     "🏙️ Monaco is the slowest but hardest GP to win",
 ]:
     st.sidebar.markdown(quick_fact)
 
+# 15-item fact bank for the button
 FACT_BANK = [
-    "🔧 Pit-crews change 4 tyres in under 2 s!",
+    "🔧 Pit-crews change all 4 tyres in under 2 s!",
     "🐝 An F1 car can drive upside-down at 175 km/h thanks to down-force.",
-    "🚀 Brakes generate 6 G – like a fighter-jet landing.",
-    "🌡️ Brake discs glow at over 1 000 °C.",
+    "🚀 Brakes generate 6 G – similar to a fighter jet landing on an aircraft carrier.",
+    "🌡️ Brake discs glow at over 1 000 °C during heavy braking.",
     "🎧 V10 engines peaked at 20 000 rpm in 2005.",
+    "🛢️ Since 2014, F1 power-units achieve 50 %+ thermal efficiency – better than any road car.",
+    "🏎️ Drivers lose up to 3 kg in sweat during hot races.",
+    "🪂 Drag Reduction System (DRS) cuts rear-wing drag by ~20 % for overtaking.",
+    "🧠 Drivers sustain lateral forces of 5 G in fast corners like Silverstone’s Copse.",
+    "🔋 Hybrid systems harvest up to 4 MJ of energy per lap for extra boost.",
+    "📏 Minimum car + driver weight is 798 kg (2024 regs).",
+    "⏱️ The fastest recorded pit stop is 1.82 s by Red Bull Racing.",
+    "🥇 Michael Schumacher and Lewis Hamilton share the record of 7 world titles.",
+    "🌍 2024 calendar features 24 Grand Prix – the longest season ever.",
+    "🏆 The Constructors’ Champion collects a separate trophy from the Drivers’ Champion.",
 ]
-if "fact_i" not in st.session_state:
-    st.session_state.fact_i = random.randrange(len(FACT_BANK))
+if "fact_idx" not in st.session_state:
+    st.session_state.fact_idx = 0
+if "facts_exhausted" not in st.session_state:
+    st.session_state.facts_exhausted = False
 
 # ─────────────────────────────────────────────────────────────
-#  GRAPH FUNCTION
+#  GRAPH DRAWER
 # ─────────────────────────────────────────────────────────────
 def draw_graph(name: str, df_results: pd.DataFrame):
     if name == "Q1 Lap Time Distribution":
@@ -78,14 +92,14 @@ def draw_graph(name: str, df_results: pd.DataFrame):
                      kde=True, color="mediumorchid", ax=ax)
         ax.set(title="Distribution of Q1 Lap Times",
                xlabel="Q1 Time (s)", ylabel="Drivers")
-        return fig, "Most drivers lap 78-100 s; right-skew shows slower outliers."
+        return fig, "Most drivers lap 78–100 s; right-skew shows slower outliers."
 
     if name == "Grid Start vs Final Position":
         filtered = df_results[df_results["grid"].between(1, 20)]
         fig, ax = plt.subplots(figsize=(10, 4))
         sns.boxplot(filtered, x="grid", y="positionOrder",
                     palette="pastel", ax=ax)
-        ax.set(title="Finishing Position by Starting Grid",
+        ax.set(title="Finish Position by Starting Grid",
                ylabel="Finish Position")
         ax.set_yticks(np.arange(1, 21, 1))
         return fig, "Front-row starters finish higher; back-markers vary widely."
@@ -106,7 +120,7 @@ def draw_graph(name: str, df_results: pd.DataFrame):
                     palette="Blues", ax=ax)
         ax.set(title="Points by Finish Position",
                xlabel="Position", ylabel="Points")
-        return fig, "Points drop sharply after P10 – F1’s scoring rule."
+        return fig, "Points drop sharply after P10 – F1’s scoring system."
 
     if name == "Fastest Lap Rank vs Final Position":
         fig, ax = plt.subplots(figsize=(9, 3.8))
@@ -114,7 +128,7 @@ def draw_graph(name: str, df_results: pd.DataFrame):
                         alpha=0.6, color="mediumvioletred", ax=ax)
         ax.set(title="Fastest Lap Rank vs Finish",
                xlabel="Fastest Lap Rank", ylabel="Finish Pos.")
-        return fig, "Fastest lap alone doesn’t secure a podium – strategy matters."
+        return fig, "Fastest lap alone doesn’t secure a podium – race strategy matters."
 
     # Top Driver Performance
     fig, ax = plt.subplots(figsize=(9, 4))
@@ -122,9 +136,9 @@ def draw_graph(name: str, df_results: pd.DataFrame):
                   join=False, capsize=0.2, errwidth=1.5,
                   color="navy", ax=ax)
     ax.invert_yaxis()
-    ax.set(title="Avg Finish – Top 6 Most Active Drivers",
-           ylabel="Avg Finish Pos.")
-    return fig, "Confidence intervals reveal driver consistency variations."
+    ax.set(title="Average Finish – Top 6 Most Active Drivers",
+           ylabel="Average Finish Pos.")
+    return fig, "Error bars reveal differences in driver consistency."
 
 GRAPH_NAMES = [
     "Q1 Lap Time Distribution",
@@ -153,19 +167,25 @@ with overview_tab:
     c2.metric("🗓️ Races", results["raceId"].nunique())
     c3.metric("⚡ Fastest Q1 (s)", f"{q1_cleaned['q1_seconds'].min():.3f}")
 
+    # Enlighten button
     if st.button("💡 Enlighten me with an F1 fact"):
-        idx = st.session_state.fact_i
-        st.info(FACT_BANK[idx])
-        st.session_state.fact_i = (idx + 1) % len(FACT_BANK)
+        if st.session_state.facts_exhausted:
+            st.info("You’ve gone through all the facts — now you’re really into it! 🤓")
+        else:
+            st.info(FACT_BANK[st.session_state.fact_idx])
+            st.session_state.fact_idx += 1
+            if st.session_state.fact_idx == len(FACT_BANK):
+                st.session_state.facts_exhausted = True
 
+    # Beginner video link
     st.markdown("#### 📺 Recommended video for beginners")
     st.markdown(
-        "[Watch the official F1 beginner’s guide on YouTube](https://www.youtube.com/watch?v=Q-jjZMMxbZs)"
+        "[Watch the official F1 beginner’s guide on YouTube]"
+        "(https://www.youtube.com/watch?v=Q-jjZMMxbZs)"
     )
     st.markdown(
-        "_This is the **official Formula&nbsp;1 YouTube channel**’s beginner guide. "
-        "It explains the sport’s basics in under 10&nbsp;minutes — highly recommended if you’re new to F1!_",
-        unsafe_allow_html=True
+        "_This is the **official Formula 1 YouTube channel**’s beginner guide. "
+        "It explains the sport’s basics in under 10 minutes — highly recommended if you’re new to F1!_"
     )
 
 # --------------------------- GRAPH EXPLORER ----------------------------------
@@ -215,11 +235,14 @@ with about_tab:
 **Dataset source:** “Formula-1 Race Data” on Kaggle  
 <https://www.kaggle.com/datasets/jtrotman/formula-1-race-data>
 
+Original Colab notebook (data wrangling & first-run plots):  
+<https://colab.research.google.com/drive/1MQLCNPQfB7MmNILDuATWw_4gGCS6gTIm?usp=sharing>
+
 **Tabs overview**
 
-* **🏎️ Overview** – project intro, key metrics, beginner-friendly F1 video link and a rotating fun-fact button  
+* **🏎️ Overview** – project intro, key metrics, beginner video link, 15-fact button  
 * **📊 Graph Explorer** – large buttons to view individual insights  
-* **🔀 Compare Graphs** – select any two visuals side-by-side for quick comparison  
+* **🔀 Compare Graphs** – pick any two visuals side-by-side for instant comparison  
 * **🛈 About** – you are here!
 
 Built with **Streamlit**, **Pandas**, **Seaborn**, and a passion for racing 🏎️.
