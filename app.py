@@ -37,18 +37,39 @@ def lap_time_to_seconds(t: str):
 qualifying["q1_seconds"] = qualifying["q1"].dropna().apply(lap_time_to_seconds)
 q1_cleaned = qualifying.dropna(subset=["q1_seconds"])
 
-results["grid_group"] = results["grid"].apply(lambda x: "Top 5" if x <= 5 else "P6-20")
-results["position_change"] = results["grid"] - results["positionOrder"]
-
-lap_data = results.query("rank.notna() & positionOrder.notna()").copy()
-lap_data["positionOrder"] = lap_data["positionOrder"].astype(int)
-
-top_drivers = results["driverId"].value_counts().head(6).index
-_top_driver_data = results[results["driverId"].isin(top_drivers)]
+# Base preprocessing (will be re-filtered later)
+base_results = results.copy()
+base_results["grid_group"] = base_results["grid"].apply(
+    lambda x: "Top 5" if x <= 5 else "P6-20"
+)
+base_results["position_change"] = (
+    base_results["grid"] - base_results["positionOrder"]
+)
 
 # ─────────────────────────────────────────────────────────────
-#  SIDEBAR FACTS
+#  SIDEBAR – FILTER + FACTS
 # ─────────────────────────────────────────────────────────────
+st.sidebar.markdown("### Filter by driver (optional)")
+all_drivers = sorted(base_results["driverId"].unique())
+driver_opt = st.sidebar.selectbox("Choose driverId", ["All"] + all_drivers)
+
+# Apply filter
+df_view = (
+    base_results
+    if driver_opt == "All"
+    else base_results[base_results["driverId"] == driver_opt]
+)
+
+# CSV download of the view
+csv_bytes = df_view.to_csv(index=False).encode("utf-8")
+st.sidebar.download_button(
+    "⬇️ Download filtered results CSV",
+    csv_bytes,
+    "f1_results_filtered.csv",
+    mime="text/csv"
+)
+
+# Quick facts
 st.sidebar.markdown("### 🧠 Did You Know?")
 for quick_fact in [
     "🏁 Pole position boosts win odds by ~40%",
@@ -58,30 +79,36 @@ for quick_fact in [
 ]:
     st.sidebar.markdown(quick_fact)
 
+# Fun-fact button state
 FACT_BANK = [
     "🔧 Pit-crews change four tyres in under 2 s!",
     "🐝 An F1 car can drive upside-down at 175 km/h thanks to down-force.",
     "🚀 Brakes generate 6 G — like a fighter-jet landing.",
-    "🌡️ Brake discs glow above 1 000 °C in heavy braking zones.",
-    "🎧 V10 engines peaked at 20 000 rpm back in 2005.",
-    "🪫 A full hybrid battery deploy gives ~160 hp extra for 33 s per lap.",
-    "🛑 Cars decelerate from 200 km/h to 0 in about 65 m.",
-    "🧊 Teams chill fuel to just above 10 °C to pack more energy per litre.",
-    "📏 Minimum car weight (2024) is 798 kg including the driver.",
-    "👨‍🔬 Steering wheels can cost over $50 000 each.",
-    "👂 Drivers lose up to 3 kg of water in a hot Grand Prix.",
-    "🏎️ An F1 car has the power-to-weight ratio of ~1 400 hp/tonne.",
-    "💸 Average annual team budget exceeds $135 million (cost cap).",
-    "🌍 2024 calendar spans 24 races across five continents.",
-    "⚡ DRS reduces rear-wing drag by ~20 % for overtaking.",
+    "🌡️ Brake discs glow at over 1 000 °C.",
+    "🎧 V10 engines peaked at 20 000 rpm in 2005.",
+    "🪫 A full hybrid battery deploy adds ~160 hp for 33 s per lap.",
+    "🛑 Cars decelerate from 200 km/h to 0 in ~65 m.",
+    "🧊 Teams chill fuel to ~10 °C to pack more energy.",
+    "📏 Minimum car weight (2024) is 798 kg incl. driver.",
+    "👨‍🔬 Steering wheels cost >$50 000 each.",
+    "👂 Drivers lose up to 3 kg of water in a hot race.",
+    "🏎️ Power-to-weight ≈ 1 400 hp/tonne.",
+    "💸 Team budget cap ≈ $135 M per season.",
+    "🌍 2024 calendar = 24 races on 5 continents.",
+    "⚡ DRS cuts rear-wing drag by ~20 %.",
 ]
 if "fact_i" not in st.session_state:
-    st.session_state.fact_i = 0  # start at first fact
+    st.session_state.fact_i = 0
 
 # ─────────────────────────────────────────────────────────────
 #  GRAPH FUNCTION
 # ─────────────────────────────────────────────────────────────
-def draw_graph(name: str):
+def draw_graph(name: str, df: pd.DataFrame):
+    lap_data = df.query("rank.notna() & positionOrder.notna()").copy()
+    lap_data["positionOrder"] = lap_data["positionOrder"].astype(int)
+    top_drivers = df["driverId"].value_counts().head(6).index
+    top_df = df[df["driverId"].isin(top_drivers)]
+
     if name == "Q1 Lap Time Distribution":
         fig, ax = plt.subplots(figsize=(9, 3.8))
         sns.histplot(q1_cleaned, x="q1_seconds", bins=30,
@@ -91,7 +118,7 @@ def draw_graph(name: str):
         return fig, "Most drivers lap 78-100 s; right-skew shows slower outliers."
 
     if name == "Grid Start vs Final Position":
-        filtered = results[results["grid"].between(1, 20)]
+        filtered = df[df["grid"].between(1, 20)]
         fig, ax = plt.subplots(figsize=(10, 4))
         sns.boxplot(filtered, x="grid", y="positionOrder",
                     palette="pastel", ax=ax)
@@ -102,7 +129,7 @@ def draw_graph(name: str):
 
     if name == "Position Change by Grid Group":
         fig, ax = plt.subplots(figsize=(9, 3.8))
-        sns.histplot(results, x="position_change", hue="grid_group",
+        sns.histplot(df, x="position_change", hue="grid_group",
                      bins=30, kde=True, multiple="stack",
                      palette=["seagreen", "slategray"], ax=ax)
         ax.axvline(0, color="red", ls="--")
@@ -110,13 +137,13 @@ def draw_graph(name: str):
         return fig, "Top-5 starters mostly hold/gain; P6-20 drivers swing broadly."
 
     if name == "Final Position vs Points":
-        top20 = results[results["positionOrder"] <= 20]
+        top20 = df[df["positionOrder"] <= 20]
         fig, ax = plt.subplots(figsize=(9, 3.8))
         sns.boxplot(top20, x="positionOrder", y="points",
                     palette="Blues", ax=ax)
         ax.set(title="Points by Finish Position",
                xlabel="Position", ylabel="Points")
-        return fig, "Points drop sharply after P10 — F1’s scoring rule."
+        return fig, "Points drop sharply after P10 — F1 scoring rule."
 
     if name == "Fastest Lap Rank vs Final Position":
         fig, ax = plt.subplots(figsize=(9, 3.8))
@@ -128,7 +155,7 @@ def draw_graph(name: str):
 
     # Top Driver Performance
     fig, ax = plt.subplots(figsize=(9, 4))
-    sns.pointplot(_top_driver_data, x="driverId", y="positionOrder",
+    sns.pointplot(top_df, x="driverId", y="positionOrder",
                   join=False, capsize=0.2, errwidth=1.5,
                   color="navy", ax=ax)
     ax.invert_yaxis()
@@ -159,8 +186,8 @@ with overview_tab:
     st.markdown("**Submitted by:** Yuval Vin  |  **Track:** Business Administration + Digital Innovation")
 
     c1, c2, c3 = st.columns(3)
-    c1.metric("👥 Drivers", results["driverId"].nunique())
-    c2.metric("🗓️ Races", results["raceId"].nunique())
+    c1.metric("👥 Drivers", df_view["driverId"].nunique())
+    c2.metric("🗓️ Races", df_view["raceId"].nunique())
     c3.metric("⚡ Fastest Q1 (s)", f"{q1_cleaned['q1_seconds'].min():.3f}")
 
     if st.button("💡 Enlighten me with an F1 fact"):
@@ -170,7 +197,7 @@ with overview_tab:
             st.session_state.fact_i += 1
         else:
             st.success("You have gone through all the facts—you're really into F1 now!")
-            st.session_state.fact_i = 0  # restart cycle
+            st.session_state.fact_i = 0
 
     st.markdown("#### 📺 Recommended video for beginners")
     st.markdown(
@@ -194,7 +221,7 @@ with explorer_tab:
         if cols[i % 3].button(gname, key=f"btn_{i}"):
             st.session_state.current_graph = gname
 
-    fig, insight = draw_graph(st.session_state.current_graph)
+    fig, insight = draw_graph(st.session_state.current_graph, df_view)
     st.pyplot(fig, use_container_width=True)
     st.success(insight)
 
@@ -205,12 +232,12 @@ with compare_tab:
 
     with colA:
         gA = st.selectbox("Graph A", GRAPH_NAMES, key="gA")
-        figA, insA = draw_graph(gA)
+        figA, insA = draw_graph(gA, df_view)
         st.pyplot(figA, use_container_width=True)
 
     with colB:
         gB = st.selectbox("Graph B", GRAPH_NAMES, index=1, key="gB")
-        figB, insB = draw_graph(gB)
+        figB, insB = draw_graph(gB, df_view)
         st.pyplot(figB, use_container_width=True)
 
     st.markdown("---")
